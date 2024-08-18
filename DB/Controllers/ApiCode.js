@@ -3,7 +3,6 @@ import { v4 as uuid } from 'uuid'
 import { db } from '../../Firebase.js'
 import { chatSessions } from '../../GemniConfig.js'
 import { CodePrompt } from '../Prompts/Code.js'
-import { ExplainPrompt } from '../Prompts/Explain.js'
 
 export const CodeController = async (req, res) => {
   const RandomID = uuid() // Unique ID for the code and explanation document
@@ -26,42 +25,28 @@ export const CodeController = async (req, res) => {
         ID: UserID, // Ensure ID is unique and valid
       }
     )
-
     // Generate the code using Gemini AI
-    const Gemni_Response = await chatSessions.sendMessage(CodePrompt(codetask))
-    const CodeAiResponse = Gemni_Response.response.text()
+    const codeResponse = await chatSessions.sendMessage(CodePrompt(codetask))
+    const code = await codeResponse.response.text()
 
-    // Check if the code response is valid
-    if (CodeAiResponse) {
-      // Generate the explanation using Gemini AI
-      const Gemni_Response2 = await chatSessions.sendMessage(
-        ExplainPrompt(codetask, CodeAiResponse)
+    // Check if the explanation response is valid
+    if (code) {
+      // Save the code and explanation to Firestore
+      await setDoc(
+        doc(db, 'CodeGenerator', sanitizedUserEmail, 'UserTasks', RandomID),
+        {
+          code: code,
+          ID: RandomID, // Ensure ID is unique and valid
+        }
       )
-      const ExplainAiResponse = Gemni_Response2.response.text()
 
-      // Check if the explanation response is valid
-      if (ExplainAiResponse) {
-        // Save the code and explanation to Firestore
-        await setDoc(
-          doc(db, 'CodeGenerator', sanitizedUserEmail, 'UserTasks', RandomID),
-          {
-            code: CodeAiResponse,
-            explanation: ExplainAiResponse,
-            ID: RandomID, // Ensure ID is unique and valid
-          }
-        )
-
-        // Respond with the code and explanation
-        res
-          .status(200)
-          .json({ code: CodeAiResponse, explanation: ExplainAiResponse })
-      } else {
-        // Handle the case where no explanation is generated
-        res.status(500).json({ error: 'Failed to generate explanation' })
-      }
+      // Respond with the formatted code and explanation
+      res.status(200).json({
+        code: code,
+      })
     } else {
-      // Handle the case where no code is generated
-      res.status(500).json({ error: 'Failed to generate code' })
+      // Handle the case where no explanation is generated
+      res.status(500).json({ error: 'Failed to generate explanation' })
     }
   } catch (error) {
     console.error('Error:', error)
