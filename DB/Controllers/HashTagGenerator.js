@@ -62,7 +62,15 @@ export const HashTagController = async (req, res) => {
     )
 
     // Respond with the clean array of hashtags
-    res.status(200).json({ HashTags: hashtagsArray })
+    res
+      .status(200)
+      .json({
+        PostContent,
+        UserEmail,
+        UserID,
+        GPTID: RandomID,
+        HashTags: hashtagsArray,
+      })
   } catch (error) {
     console.error('Error:', error)
     res.status(500).json({ error: 'Failed to generate hashtags' })

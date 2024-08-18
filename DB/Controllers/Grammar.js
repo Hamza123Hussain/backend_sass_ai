@@ -68,7 +68,15 @@ export const GrammarController = async (req, res) => {
       )
 
       // Respond with the formatted Grammar
-      res.status(200).json({ Grammar: formattedResponse })
+      res
+        .status(200)
+        .json({
+          PostContent,
+          UserEmail,
+          UserID,
+          GPTID: RandomID,
+          Grammar: formattedResponse,
+        })
     } else {
       // Handle the case where no Grammar is generated
       res.status(500).json({ error: 'Failed to generate Grammar' })

@@ -62,7 +62,15 @@ export const MusicController = async (req, res) => {
       )
 
       // Respond with the Music
-      res.status(200).json({ Music: parsedResponse })
+      res
+        .status(200)
+        .json({
+          MusicTask,
+          UserEmail,
+          UserID,
+          GPTID: RandomID,
+          Music: parsedResponse,
+        })
     } else {
       // Handle the case where the parsed response is not an array
       res

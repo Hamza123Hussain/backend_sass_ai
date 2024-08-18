@@ -54,7 +54,15 @@ export const MovieController = async (req, res) => {
       )
 
       // Respond with the Movie
-      res.status(200).json({ Movie: ExplainAiResponse })
+      res
+        .status(200)
+        .json({
+          MovieTask,
+          UserEmail,
+          UserID,
+          GPTID: RandomID,
+          Movie: ExplainAiResponse,
+        })
     } else {
       // Handle the case where no Movie is generated
       res.status(500).json({ error: 'Failed to generate Movie' })

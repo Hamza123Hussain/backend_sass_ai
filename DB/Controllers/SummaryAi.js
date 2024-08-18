@@ -62,7 +62,15 @@ export const SummaryController = async (req, res) => {
     })
 
     // Respond with the summary
-    res.status(200).json({ Summary: cleanedResponse })
+    res
+      .status(200)
+      .json({
+        SummaryTask,
+        UserEmail,
+        UserID,
+        GPTID: RandomID,
+        Summary: cleanedResponse,
+      })
   } catch (error) {
     console.error('Error:', error)
     res.status(500).json({ error: 'Failed to generate summary' })
