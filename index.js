@@ -6,6 +6,7 @@ import SummaryRouter from './DB/Routes/SummaryRoute.js'
 import MusicRouter from './DB/Routes/MusicSuggestRoute.js'
 import MovieRouter from './DB/Routes/MovieSuggest.js'
 import HashTagRouter from './DB/Routes/HashTagRoute.js'
+import GrammarRouter from './DB/Routes/Grammar.js'
 
 const App = express()
 
@@ -16,6 +17,7 @@ App.use('/api/Summary', SummaryRouter)
 App.use('/api/Music', MusicRouter)
 App.use('/api/Movie', MovieRouter)
 App.use('/api/HashTag', HashTagRouter)
+App.use('/api/Grammar', GrammarRouter)
 App.listen(Port, () => {
   console.log(`RUNNING ON ${Port}`)
 })
