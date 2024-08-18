@@ -25,10 +25,9 @@ export const MusicController = async (req, res) => {
       }
     )
 
-    // Define the prompt for generating the Music recommendations
-    const MusicPromp = `
-    You are a music recommendation expert with extensive knowledge of various genres and artists. The user has described their current mood and feelings as: "${MusicTask}". Based on this mood, recommend a selection of songs that match the user's emotional state. Provide the recommendations in an array of objects, with each object containing the following details:
-    
+    // Define the prompt for generating the Music
+    const MusicPrompt = `You are a music recommendation expert with extensive knowledge of various genres and artists. The user has described their current mood and feelings as: "${MusicTask}". Based on this mood, recommend a selection of songs that match the user's emotional state. Provide the recommendations in an array of objects, with each object containing the following details:
+
     - **Song Title**: The title of the song.
     - **Artist**: The artist or band who performed the song.
     - **Genre**: The genre of the song.
@@ -36,15 +35,33 @@ export const MusicController = async (req, res) => {
     - **Description**: A brief explanation of why this song fits the user's mood.
     - **Listen URL**: A URL where the user can listen to the song.`
 
-    // Generate the Music recommendations using Gemini AI
-    const Gemni_Response = await chatSessions.sendMessage(MusicPromp)
+    console.log('MusicPrompt:', MusicPrompt) // Log the prompt to check its content
 
-    const AiResponse = Gemni_Response.response.text()
+    // Generate the Music using Gemini AI
+    const Gemini_Response = await chatSessions.sendMessage(MusicPrompt)
+    const AiResponse = Gemini_Response.response.text()
 
-    // Parse the response from Gemini AI
-    const parsedResponse = JSON.parse(AiResponse)
+    console.log('AI Response:', AiResponse) // Log the AI response to check its content
 
-    if (parsedResponse) {
+    // Extract and parse the JSON response
+    const cleanResponse = AiResponse.replace(/```json\n/, '').replace(
+      /\n```$/,
+      ''
+    )
+    let parsedResponse
+
+    try {
+      // Attempt to parse the cleaned response
+      parsedResponse = JSON.parse(cleanResponse)
+    } catch (error) {
+      // Handle the case where the response is not valid JSON
+      console.error('Error parsing JSON:', error)
+      return res
+        .status(500)
+        .json({ error: 'Received response is not valid JSON' })
+    }
+
+    if (Array.isArray(parsedResponse)) {
       // Save the generated Music recommendations to Firestore
       await setDoc(
         doc(db, 'MusicSuggest', sanitizedUserEmail, 'Music', RandomID),
@@ -54,13 +71,13 @@ export const MusicController = async (req, res) => {
         }
       )
 
-      // Respond with the Music recommendations
+      // Respond with the Music
       res.status(200).json({ Music: parsedResponse })
     } else {
-      // Handle the case where no Music recommendations are generated
+      // Handle the case where the parsed response is not an array
       res
         .status(500)
-        .json({ error: 'Failed to generate Music recommendations' })
+        .json({ error: 'Failed to generate valid Music recommendations' })
     }
   } catch (error) {
     console.error('Error:', error)
