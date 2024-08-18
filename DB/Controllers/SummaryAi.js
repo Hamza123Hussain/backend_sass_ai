@@ -7,7 +7,7 @@ import { SummaryPromp } from '../Prompts/Summary.js'
 export const SummaryController = async (req, res) => {
   const RandomID = uuid() // Unique ID for the summary document
   try {
-    const { SummaryTask, UserEmail } = req.body
+    const { SummaryTask, UserEmail, UserID } = req.body
 
     // Check if UserEmail is provided
     if (!UserEmail) {
@@ -18,13 +18,10 @@ export const SummaryController = async (req, res) => {
     const sanitizedUserEmail = UserEmail.replace(/[@.]/g, '_')
 
     // Save the original task and UserEmail
-    await setDoc(
-      doc(db, 'Summary', sanitizedUserEmail, 'UserTasks', RandomID),
-      {
-        Message: SummaryTask,
-        ID: RandomID, // Ensure ID is unique and valid
-      }
-    )
+    await setDoc(doc(db, 'Summary', sanitizedUserEmail, 'UserTasks', UserID), {
+      Message: SummaryTask,
+      ID: UserID, // Ensure ID is unique and valid
+    })
 
     // Define the prompt for generating the summary
 

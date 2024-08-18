@@ -8,7 +8,7 @@ import { ExplainPrompt } from '../Prompts/Explain.js'
 export const CodeController = async (req, res) => {
   const RandomID = uuid() // Unique ID for the code and explanation document
   try {
-    const { codetask, UserEmail } = req.body
+    const { codetask, UserEmail, UserID } = req.body
 
     // Check if UserEmail is provided
     if (!UserEmail) {
@@ -20,10 +20,10 @@ export const CodeController = async (req, res) => {
 
     // Save the original task and UserEmail
     await setDoc(
-      doc(db, 'CodeGenerator', sanitizedUserEmail, 'UserTasks', RandomID),
+      doc(db, 'CodeGenerator', sanitizedUserEmail, 'UserTasks', UserID),
       {
         Message: codetask,
-        ID: RandomID, // Ensure ID is unique and valid
+        ID: UserID, // Ensure ID is unique and valid
       }
     )
 

@@ -7,7 +7,7 @@ import { MoviePromp } from '../Prompts/Movie.js'
 export const MovieController = async (req, res) => {
   const RandomID = uuid() // Unique ID for the document
   try {
-    const { MovieTask, UserEmail } = req.body
+    const { MovieTask, UserEmail, UserID } = req.body
 
     // Check if UserEmail is provided
     if (!UserEmail) {
@@ -18,13 +18,10 @@ export const MovieController = async (req, res) => {
     const sanitizedUserEmail = UserEmail.replace(/[@.]/g, '_')
 
     // Save the original task and UserEmail
-    await setDoc(
-      doc(db, 'MovieSuggest', sanitizedUserEmail, 'Movie', RandomID),
-      {
-        Message: MovieTask,
-        ID: RandomID, // Ensure ID is unique and valid
-      }
-    )
+    await setDoc(doc(db, 'MovieSuggest', sanitizedUserEmail, 'Movie', UserID), {
+      Message: MovieTask,
+      ID: UserID, // Ensure ID is unique and valid
+    })
 
     // Generate the Movie using Gemini AI
     const Gemni_Response = await chatSessions.sendMessage(MoviePromp(MovieTask))
