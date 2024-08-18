@@ -2,6 +2,7 @@ import { doc, setDoc } from 'firebase/firestore'
 import { v4 as uuid } from 'uuid'
 import { db } from '../../Firebase.js'
 import { chatSessions } from '../../GemniConfig.js'
+import { SummaryPromp } from '../Prompts/Summary.js'
 
 export const SummaryController = async (req, res) => {
   const RandomID = uuid() // Unique ID for the summary document
@@ -26,14 +27,11 @@ export const SummaryController = async (req, res) => {
     )
 
     // Define the prompt for generating the summary
-    const SummaryPromp = `
-The user has provided the following content: "${SummaryTask}". 
-Your task is to generate a concise and accurate summary of this content. 
-Make sure to capture the main points and essential details while keeping the summary clear and to the point. 
-Please provide only the summary as your response. Do not include any additional text or summaries.`
 
     // Generate the summary using Gemini AI
-    const Gemni_Response = await chatSessions.sendMessage(SummaryPromp)
+    const Gemni_Response = await chatSessions.sendMessage(
+      SummaryPromp(SummaryTask)
+    )
 
     // Log the raw response for debugging
     console.log('Gemini Response:', Gemni_Response)
