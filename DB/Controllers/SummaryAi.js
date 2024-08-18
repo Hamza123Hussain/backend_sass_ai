@@ -4,21 +4,26 @@ import { db } from '../../Firebase.js'
 import { chatSessions } from '../../GemniConfig.js'
 
 export const SummaryController = async (req, res) => {
-  const RandomID = uuid()
-  const RandomID2 = uuid()
+  const RandomID = uuid() // Unique ID for the summary document
   try {
-    const { SummaryTask, UserID } = req.body
+    const { SummaryTask, UserEmail } = req.body
 
-    // Check if UserID is provided
-    if (!UserID) {
-      return res.status(400).json({ error: 'UserID is required' })
+    // Check if UserEmail is provided
+    if (!UserEmail) {
+      return res.status(400).json({ error: 'UserEmail is required' })
     }
 
-    // Save the original task and UserID
-    await setDoc(doc(db, 'Summary', RandomID2), {
-      Message: SummaryTask,
-      ID: UserID, // Ensure UserID is not undefined
-    })
+    // Ensure UserEmail is properly formatted for Firestore paths
+    const sanitizedUserEmail = UserEmail.replace(/[@.]/g, '_')
+
+    // Save the original task and UserEmail
+    await setDoc(
+      doc(db, 'Summary', sanitizedUserEmail, 'UserTasks', RandomID),
+      {
+        Message: SummaryTask,
+        ID: RandomID, // Ensure ID is unique and valid
+      }
+    )
 
     // Define the prompt for generating the summary
     const SummaryPromp = `
@@ -30,14 +35,32 @@ Please provide only the summary as your response. Do not include any additional 
     // Generate the summary using Gemini AI
     const Gemni_Response = await chatSessions.sendMessage(SummaryPromp)
 
-    const ExplainAiResponse = Gemni_Response.response.text()
+    // Log the raw response for debugging
+    console.log('Gemini Response:', Gemni_Response)
+
+    // Check if response is valid text
+    const AiResponseText = await Gemni_Response.response.text()
+    console.log('AI Response Text:', AiResponseText)
+
+    // Clean and parse the response text
+    const cleanedResponse = AiResponseText.trim() // Trim any extra spaces or new lines
+    let ExplainAiResponse
+    try {
+      ExplainAiResponse = cleanedResponse
+    } catch (parseError) {
+      console.error('Failed to clean response:', parseError)
+      return res.status(500).json({ error: 'Invalid response format from AI' })
+    }
 
     if (ExplainAiResponse) {
       // Save the generated summary to Firestore
-      await setDoc(doc(db, 'Summary', RandomID), {
-        Summary: ExplainAiResponse,
-        ID: UserID, // Ensure UserID is not undefined
-      })
+      await setDoc(
+        doc(db, 'Summary', sanitizedUserEmail, 'UserTasks', RandomID),
+        {
+          Summary: ExplainAiResponse,
+          ID: RandomID, // Ensure ID is unique and valid
+        }
+      )
 
       // Respond with the summary
       res.status(200).json({ Summary: ExplainAiResponse })
