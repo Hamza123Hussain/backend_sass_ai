@@ -4,15 +4,27 @@ import { db } from '../../Firebase.js'
 import { chatSessions } from '../../GemniConfig.js'
 
 export const CodeController = async (req, res) => {
-  const RandomID = uuid()
-  const RandomID2 = uuid()
+  const RandomID = uuid() // Unique ID for the code and explanation document
   try {
-    const { codetask, UserID } = req.body
+    const { codetask, UserEmail } = req.body
 
-    await setDoc(doc(db, 'CodeGenerator', RandomID2), {
-      Message: codetask,
-      ID: UserID,
-    })
+    // Check if UserEmail is provided
+    if (!UserEmail) {
+      return res.status(400).json({ error: 'UserEmail is required' })
+    }
+
+    // Ensure UserEmail is properly formatted for Firestore paths
+    const sanitizedUserEmail = UserEmail.replace(/[@.]/g, '_')
+
+    // Save the original task and UserEmail
+    await setDoc(
+      doc(db, 'CodeGenerator', sanitizedUserEmail, 'UserTasks', RandomID),
+      {
+        Message: codetask,
+        ID: RandomID, // Ensure ID is unique and valid
+      }
+    )
+
     // Define the prompt for generating code
     const CodePrompt = `
     You are a highly experienced programmer with extensive knowledge in various programming languages. 
@@ -25,6 +37,7 @@ export const CodeController = async (req, res) => {
     const Gemni_Response = await chatSessions.sendMessage(CodePrompt)
     const CodeAiResponse = Gemni_Response.response.text()
 
+    // Check if the code response is valid
     if (CodeAiResponse) {
       // Define the prompt for generating explanation
       const ExplainPrompt = `
@@ -38,19 +51,29 @@ export const CodeController = async (req, res) => {
       const Gemni_Response2 = await chatSessions.sendMessage(ExplainPrompt)
       const ExplainAiResponse = Gemni_Response2.response.text()
 
+      // Check if the explanation response is valid
       if (ExplainAiResponse) {
         // Save the code and explanation to Firestore
-        await setDoc(doc(db, 'CodeGenerator', RandomID), {
-          code: CodeAiResponse,
-          explanation: ExplainAiResponse,
-          ID: RandomID,
-        })
+        await setDoc(
+          doc(db, 'CodeGenerator', sanitizedUserEmail, 'UserTasks', RandomID),
+          {
+            code: CodeAiResponse,
+            explanation: ExplainAiResponse,
+            ID: RandomID, // Ensure ID is unique and valid
+          }
+        )
 
         // Respond with the code and explanation
         res
           .status(200)
           .json({ code: CodeAiResponse, explanation: ExplainAiResponse })
+      } else {
+        // Handle the case where no explanation is generated
+        res.status(500).json({ error: 'Failed to generate explanation' })
       }
+    } else {
+      // Handle the case where no code is generated
+      res.status(500).json({ error: 'Failed to generate code' })
     }
   } catch (error) {
     console.error('Error:', error)
