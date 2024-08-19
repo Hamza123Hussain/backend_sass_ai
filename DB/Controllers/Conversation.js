@@ -19,6 +19,7 @@ export const ConvoController = async (req, res) => {
     await setDoc(
       doc(db, 'ConvoGenerator', sanitizedUserEmail, 'Conversation', UserID),
       {
+        MessageID: uuid(),
         Message: Conversation,
         ID: UserID, // Ensure ID is unique and valid
       }
@@ -36,6 +37,7 @@ export const ConvoController = async (req, res) => {
     await setDoc(
       doc(db, 'ConvoGenerator', sanitizedUserEmail, 'Conversation', RandomID),
       {
+        MessageID: uuid(),
         Message: AiResponseText,
         ID: RandomID, // Ensure ID is unique and valid
       }
@@ -44,10 +46,12 @@ export const ConvoController = async (req, res) => {
     // Respond with the clean array of Conversation
     res.status(200).json({
       AI: {
-        GPTID: RandomID,
-        AiResponseText,
+        MessageID: uuid(),
+        UserID: RandomID,
+        Conversation: AiResponseText,
+        UserEmail: 'IAMROBOT@GEMNI.COM',
       },
-      Human: { Conversation, UserEmail, UserID }, // Include any additional human-related information if needed
+      Human: { MessageID: uuid(), Conversation, UserEmail, UserID }, // Include any additional human-related information if needed
     })
   } catch (error) {
     console.error('Error:', error)

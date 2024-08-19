@@ -28,6 +28,7 @@ export const SummaryController = async (req, res) => {
       UserID
     )
     await setDoc(originalDocRef, {
+      MessageID: uuid(),
       Message: SummaryTask,
       ID: UserID, // Ensure ID is unique and valid
     })
@@ -57,20 +58,26 @@ export const SummaryController = async (req, res) => {
       RandomID
     )
     await setDoc(summaryDocRef, {
+      MessageID: uuid(),
       Message: cleanedResponse,
       ID: RandomID, // Ensure ID is unique and valid
     })
 
     // Respond with the summary
-    res
-      .status(200)
-      .json({
-        SummaryTask,
+    res.status(200).json({
+      AI: {
+        MessageID: uuid(),
+        UserID: RandomID,
+        Conversation: cleanedResponse,
+        UserEmail: 'IAMROBOT@GEMNI.COM',
+      },
+      Human: {
+        MessageID: uuid(),
+        Conversation: SummaryTask,
         UserEmail,
         UserID,
-        GPTID: RandomID,
-        Summary: cleanedResponse,
-      })
+      }, // Include any additional human-related information if needed
+    })
   } catch (error) {
     console.error('Error:', error)
     res.status(500).json({ error: 'Failed to generate summary' })
