@@ -1,9 +1,12 @@
 import { signInWithEmailAndPassword } from 'firebase/auth'
-import { Auth } from '../../Firebase.js'
+import { Auth, db } from '../../Firebase.js'
+import { doc, getDoc } from 'firebase/firestore'
 
 export const LoginController = async (req, res) => {
   const { email, password } = req.body
+
   try {
+    // Sign in the user with email and password
     const UserCredential = await signInWithEmailAndPassword(
       Auth,
       email,
@@ -12,12 +15,22 @@ export const LoginController = async (req, res) => {
 
     // Check if UserCredential is successfully obtained
     if (UserCredential && UserCredential.user) {
-      // Send the user ID as the response
-      return res.status(200).json({ UserID: UserCredential.user.uid })
+      // Fetch the user data from Firestore
+      const userDocRef = doc(db, 'USERS', email)
+      const userDoc = await getDoc(userDocRef)
+
+      // Check if the document exists and return the data
+      if (userDoc.exists()) {
+        return res.status(200).json(userDoc.data())
+      } else {
+        return res
+          .status(404)
+          .json({ message: 'User data not found in Firestore' })
+      }
     }
 
     // If UserCredential is not valid, send a 404 response
-    return res.status(404).json({ message: 'USER NOT REGISTERED' })
+    return res.status(404).json({ message: 'User not registered' })
   } catch (error) {
     // Handle any errors during sign-in
     console.error('Login error:', error)

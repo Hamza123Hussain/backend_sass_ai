@@ -7,7 +7,7 @@ export const SignOutController = async (req, res) => {
     await signOut(Auth)
 
     // Respond with a success message
-    return res.status(200).json({ message: 'Successfully signed out' })
+    return res.status(200).json(true)
   } catch (error) {
     // Handle any errors during sign-out
     console.error('SignOut error:', error)

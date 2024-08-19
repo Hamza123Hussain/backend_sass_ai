@@ -34,7 +34,7 @@ export const SignUpController = async (req, res) => {
       // Retrieve and return the user's data
       const userDoc = await getDoc(userDocRef)
       if (userDoc.exists()) {
-        return res.status(200).json(userDoc.data())
+        return res.status(201).json(userDoc.data())
       } else {
         return res
           .status(404)
