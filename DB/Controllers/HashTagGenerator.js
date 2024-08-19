@@ -19,6 +19,7 @@ export const HashTagController = async (req, res) => {
     await setDoc(
       doc(db, 'HashTagGenerator', sanitizedUserEmail, 'HashTags', UserID),
       {
+        MessageID: uuid(),
         Message: PostContent,
         ID: UserID, // Ensure ID is unique and valid
       }
@@ -35,13 +36,19 @@ export const HashTagController = async (req, res) => {
     // Parse the response and format it
     let hashtagsArray
     try {
-      // Clean the response text (remove surrounding backticks and extra newlines)
-      const cleanedResponse = AiResponseText.replace(/^\[\s*```/, '') // Remove opening array and backticks
-        .replace(/```[\s]*\]$/, '') // Remove closing backticks and array
+      // Clean the response text
+      const cleanedResponse = AiResponseText.replace(/^\[\s*```\s*/, '') // Remove leading backticks and brackets
+        .replace(/```\s*\]$/, '') // Remove trailing backticks and brackets
         .trim()
 
-      // Parse the cleaned response into an array
-      hashtagsArray = JSON.parse(cleanedResponse)
+      // Check if the cleaned response is JSON
+      if (cleanedResponse.startsWith('[') && cleanedResponse.endsWith(']')) {
+        // Attempt to parse the cleaned response into an array
+        hashtagsArray = JSON.parse(cleanedResponse)
+      } else {
+        // Handle cases where the response is not valid JSON
+        hashtagsArray = cleanedResponse.split(/\s+/).filter(Boolean)
+      }
 
       // Ensure the parsed response is an array
       if (!Array.isArray(hashtagsArray)) {
@@ -56,21 +63,27 @@ export const HashTagController = async (req, res) => {
     await setDoc(
       doc(db, 'HashTagGenerator', sanitizedUserEmail, 'HashTags', RandomID),
       {
+        MessageID: uuid(),
         HashTags: hashtagsArray,
         ID: RandomID, // Ensure ID is unique and valid
       }
     )
 
-    // Respond with the clean array of hashtags
-    res
-      .status(200)
-      .json({
-        PostContent,
+    // Respond with the summary
+    res.status(200).json({
+      AI: {
+        MessageID: uuid(),
+        UserID: RandomID,
+        Conversation: hashtagsArray,
+        UserEmail: 'IAMROBOT@GEMNI.COM',
+      },
+      Human: {
+        MessageID: uuid(),
+        Conversation: PostContent,
         UserEmail,
         UserID,
-        GPTID: RandomID,
-        HashTags: hashtagsArray,
-      })
+      }, // Include any additional human-related information if needed
+    })
   } catch (error) {
     console.error('Error:', error)
     res.status(500).json({ error: 'Failed to generate hashtags' })
