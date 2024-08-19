@@ -42,15 +42,13 @@ export const ConvoController = async (req, res) => {
     )
 
     // Respond with the clean array of Conversation
-    res
-      .status(200)
-      .json({
-        Conversation,
-        UserEmail,
-        UserID,
+    res.status(200).json({
+      AI: {
         GPTID: RandomID,
         AiResponseText,
-      })
+      },
+      Human: { Conversation, UserEmail, UserID }, // Include any additional human-related information if needed
+    })
   } catch (error) {
     console.error('Error:', error)
     res.status(500).json({ error: 'Failed to generate Conversation' })
