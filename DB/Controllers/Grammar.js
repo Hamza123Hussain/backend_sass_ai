@@ -21,6 +21,7 @@ export const GrammarController = async (req, res) => {
     await setDoc(
       doc(db, 'GrammarSuggest', sanitizedUserEmail, 'Grammar', UserID),
       {
+        MessageID: uuid(),
         Message: PostContent,
         ID: UserID, // Ensure ID is unique and valid
       }
@@ -39,44 +40,49 @@ export const GrammarController = async (req, res) => {
     console.log('AI Response Text:', AiResponseText)
 
     if (AiResponseText) {
-      // Parse the response into the desired format
-      const formattedResponse = {
-        RevisedContent: 'The quick brown fox leaps over the lazy dog.',
-        Suggestions: {
-          Grammar: [
-            'No grammatical errors found. The original sentence is grammatically correct.',
-          ],
-          Style: [
-            "Replace 'jumps' with 'leaps' for a more evocative verb: 'Leaps' suggests a more energetic and dynamic movement than 'jumps,' adding a touch of imagery to the sentence.",
-          ],
-          Clarity: [
-            'No clarity issues found. The original sentence is clear and concise.',
-          ],
-          Formatting: [
-            'No formatting changes needed. The original sentence is already formatted appropriately.',
-          ],
-        },
+      let formattedResponse
+      try {
+        // Attempt to parse JSON array response
+        formattedResponse = JSON.parse(AiResponseText)
+      } catch (parseError) {
+        console.error('Error parsing AI response:', parseError)
+
+        // Handle non-JSON or malformed response
+        formattedResponse = [
+          {
+            RevisedContent: AiResponseText,
+            Grammar: 'Unable to parse grammar.',
+            Style: 'Unable to parse style.',
+            Clarity: 'Unable to parse clarity.',
+            Formatting: 'Unable to parse formatting.',
+          },
+        ]
       }
 
       // Save the generated Grammar to Firestore
       await setDoc(
         doc(db, 'GrammarSuggest', sanitizedUserEmail, 'Grammar', RandomID),
         {
+          MessageID: RandomID,
           Grammar: formattedResponse,
           ID: RandomID, // Ensure ID is unique and valid
         }
       )
 
-      // Respond with the formatted Grammar
-      res
-        .status(200)
-        .json({
-          PostContent,
+      res.status(200).json({
+        AI: {
+          MessageID: uuid(),
+          UserID: RandomID,
+          Conversation: formattedResponse,
+          UserEmail: 'IAMROBOT@GEMNI.COM',
+        },
+        Human: {
+          MessageID: uuid(),
+          Conversation: PostContent,
           UserEmail,
           UserID,
-          GPTID: RandomID,
-          Grammar: formattedResponse,
-        })
+        },
+      })
     } else {
       // Handle the case where no Grammar is generated
       res.status(500).json({ error: 'Failed to generate Grammar' })
