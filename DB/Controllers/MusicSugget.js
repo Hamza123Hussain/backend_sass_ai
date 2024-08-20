@@ -4,6 +4,13 @@ import { db } from '../../Firebase.js'
 import { chatSessions } from '../../GemniConfig.js'
 import { MusicPrompt } from '../Prompts/Music.js'
 
+const validateUrl = (url) => {
+  // Basic validation for URL format
+  return /^https:\/\/(open\.spotify\.com\/track\/|i\.scdn\.co\/image\/)/.test(
+    url
+  )
+}
+
 export const MusicController = async (req, res) => {
   const RandomID = uuid() // Unique ID for the document
   try {
@@ -19,6 +26,7 @@ export const MusicController = async (req, res) => {
 
     // Save the original task and UserEmail
     await setDoc(doc(db, 'MusicSuggest', sanitizedUserEmail, 'Music', UserID), {
+      MessageID: uuid(),
       Message: MusicTask,
       ID: UserID, // Ensure ID is unique and valid
     })
@@ -34,43 +42,57 @@ export const MusicController = async (req, res) => {
     console.log('AI Response Text:', AiResponse)
 
     // Extract and parse the JSON response
-    const cleanResponse = AiResponse.replace(/```json\n/, '').replace(
-      /\n```$/,
-      ''
-    )
+    const cleanResponse = AiResponse.replace(/^\s*```json\s*/, '') // Remove leading backticks and 'json' keyword
+      .replace(/\s*```$/, '') // Remove trailing backticks
+      .trim()
+
     let parsedResponse
 
     try {
-      // Attempt to parse the cleaned response
       parsedResponse = JSON.parse(cleanResponse)
     } catch (error) {
-      // Handle the case where the response is not valid JSON
-      console.error('Error parsing JSON:', error)
+      console.error('Error parsing JSON:', error.message)
+      console.error('Cleaned Response:', cleanResponse)
       return res
         .status(500)
         .json({ error: 'Received response is not valid JSON' })
     }
 
     if (Array.isArray(parsedResponse)) {
-      // Save the generated Music recommendations to Firestore
+      // Validate each song's Listen and Image URL
+      const validatedSongs = parsedResponse
+        .map((song) => ({
+          ...song,
+          Listen: validateUrl(song.Listen) ? song.Listen : '',
+          Image: validateUrl(song.Image) ? song.Image : '',
+        }))
+        .filter((song) => song.Listen && song.Image) // Filter out invalid entries
+
+      // Save the validated Music recommendations to Firestore
       await setDoc(
         doc(db, 'MusicSuggest', sanitizedUserEmail, 'Music', RandomID),
         {
-          Music: parsedResponse,
+          MessageID: uuid(),
+          Message: validatedSongs,
           ID: RandomID, // Ensure ID is unique and valid
         }
       )
 
       // Respond with the Music
-      res
-        .status(200)
-        .json({
-          MusicTask,
+      res.status(200).json({
+        AI: {
+          MessageID: uuid(),
+          UserID: RandomID,
+          Conversation: validatedSongs,
+          UserEmail: 'IAMROBOT@GEMNI.COM',
+        },
+        Human: {
+          MessageID: uuid(),
+          Conversation: MusicTask,
           UserEmail,
           UserID,
-          GPTID: RandomID,
-          Music: parsedResponse,
-        })
+        }, // Include any additional human-related information if needed
+      })
     } else {
       // Handle the case where the parsed response is not an array
       res

@@ -2,7 +2,7 @@ import { doc, setDoc } from 'firebase/firestore'
 import { v4 as uuid } from 'uuid'
 import { db } from '../../Firebase.js'
 import { chatSessions } from '../../GemniConfig.js'
-import { MoviePromp } from '../Prompts/Movie.js'
+import { MoviePrompt } from '../Prompts/Movie.js'
 
 export const MovieController = async (req, res) => {
   const RandomID = uuid() // Unique ID for the document
@@ -19,18 +19,22 @@ export const MovieController = async (req, res) => {
 
     // Save the original task and UserEmail
     await setDoc(doc(db, 'MovieSuggest', sanitizedUserEmail, 'Movie', UserID), {
+      MessageID: uuid(),
       Message: MovieTask,
       ID: UserID, // Ensure ID is unique and valid
     })
 
-    // Generate the Movie using Gemini AI
-    const Gemni_Response = await chatSessions.sendMessage(MoviePromp(MovieTask))
+    // Generate the Movie recommendations using Gemini AI
+    const prompt = MoviePrompt(MovieTask)
+    console.log('Prompt:', prompt)
+
+    const Gemini_Response = await chatSessions.sendMessage(prompt)
 
     // Log the raw response for debugging
-    console.log('Gemini Response:', Gemni_Response)
+    console.log('Gemini Response:', Gemini_Response)
 
     // Check if response is valid JSON
-    const AiResponseText = await Gemni_Response.response.text()
+    const AiResponseText = await Gemini_Response.response.text()
     console.log('AI Response Text:', AiResponseText)
 
     // Remove unnecessary formatting and parse JSON
@@ -43,32 +47,60 @@ export const MovieController = async (req, res) => {
       return res.status(500).json({ error: 'Invalid response format from AI' })
     }
 
-    if (ExplainAiResponse) {
-      // Save the generated Movie to Firestore
+    // Validate and filter the response
+    if (Array.isArray(ExplainAiResponse)) {
+      const validMovies = ExplainAiResponse.filter((movie) => {
+        // Validate URL and image
+        const isValidURL = (url) => {
+          try {
+            new URL(url)
+            return true
+          } catch {
+            return false
+          }
+        }
+
+        return (
+          movie.Platform &&
+          ['Prime Video', 'Netflix'].includes(movie.Platform) &&
+          isValidURL(movie.WatchURL) &&
+          (!movie.PosterImage || isValidURL(movie.PosterImage))
+        )
+      })
+
+      // Save the generated Movie recommendations to Firestore
       await setDoc(
         doc(db, 'MovieSuggest', sanitizedUserEmail, 'Movie', RandomID),
         {
-          Movie: ExplainAiResponse,
+          MessageID: uuid(),
+          Message: validMovies,
           ID: RandomID, // Ensure ID is unique and valid
         }
       )
 
-      // Respond with the Movie
-      res
-        .status(200)
-        .json({
-          MovieTask,
+      // Respond with the Movie recommendations
+      res.status(200).json({
+        AI: {
+          MessageID: uuid(),
+          UserID: RandomID,
+          Conversation: validMovies,
+          UserEmail: 'IAMROBOT@GEMNI.COM',
+        },
+        Human: {
+          MessageID: uuid(),
+          Conversation: MovieTask,
           UserEmail,
           UserID,
-          GPTID: RandomID,
-          Movie: ExplainAiResponse,
-        })
+        }, // Include any additional human-related information if needed
+      })
     } else {
-      // Handle the case where no Movie is generated
-      res.status(500).json({ error: 'Failed to generate Movie' })
+      // Handle the case where no valid Movie recommendations are generated
+      res
+        .status(500)
+        .json({ error: 'Failed to generate valid Movie recommendations' })
     }
   } catch (error) {
     console.error('Error:', error)
-    res.status(500).json({ error: 'Failed to generate Movie' })
+    res.status(500).json({ error: 'Failed to generate Movie recommendations' })
   }
 }
