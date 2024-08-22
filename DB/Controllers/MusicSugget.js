@@ -5,7 +5,6 @@ import { chatSessions } from '../../GemniConfig.js'
 import { MusicPrompt } from '../Prompts/Music.js'
 
 const validateUrl = (url) => {
-  // Basic validation for URL format
   return /^https:\/\/(open\.spotify\.com\/track\/|i\.scdn\.co\/image\/)/.test(
     url
   )
@@ -16,19 +15,17 @@ export const MusicController = async (req, res) => {
   try {
     const { MusicTask, UserEmail, UserID } = req.body
 
-    // Check if UserEmail is provided
     if (!UserEmail) {
       return res.status(400).json({ error: 'UserEmail is required' })
     }
 
-    // Ensure UserEmail is properly formatted for Firestore paths
     const sanitizedUserEmail = UserEmail.replace(/[@.]/g, '_')
 
     // Save the original task and UserEmail
     await setDoc(doc(db, 'MusicSuggest', sanitizedUserEmail, 'Music', UserID), {
       MessageID: uuid(),
       Message: MusicTask,
-      ID: UserID, // Ensure ID is unique and valid
+      ID: UserID,
     })
 
     // Generate the Music using Gemini AI
@@ -41,9 +38,11 @@ export const MusicController = async (req, res) => {
     const AiResponse = await Gemini_Response.response.text()
     console.log('AI Response Text:', AiResponse)
 
-    // Extract and parse the JSON response
-    const cleanResponse = AiResponse.replace(/^\s*```json\s*/, '') // Remove leading backticks and 'json' keyword
-      .replace(/\s*```$/, '') // Remove trailing backticks
+    // Clean up the response to remove backticks and other unwanted characters
+    const cleanResponse = AiResponse.replace(/^\s*```json\s*/, '')
+      .replace(/\s*```$/, '')
+      .replace(/\\`/g, '')
+      .replace(/`/g, '')
       .trim()
 
     let parsedResponse
@@ -59,7 +58,6 @@ export const MusicController = async (req, res) => {
     }
 
     if (Array.isArray(parsedResponse)) {
-      // Validate each song's Listen and Image URL
       const validatedSongs = parsedResponse
         .map((song) => ({
           ...song,
@@ -74,7 +72,7 @@ export const MusicController = async (req, res) => {
         {
           MessageID: uuid(),
           Message: validatedSongs,
-          ID: RandomID, // Ensure ID is unique and valid
+          ID: RandomID,
         }
       )
 
@@ -91,10 +89,9 @@ export const MusicController = async (req, res) => {
           Conversation: MusicTask,
           UserEmail,
           UserID,
-        }, // Include any additional human-related information if needed
+        },
       })
     } else {
-      // Handle the case where the parsed response is not an array
       res
         .status(500)
         .json({ error: 'Failed to generate valid Music recommendations' })
